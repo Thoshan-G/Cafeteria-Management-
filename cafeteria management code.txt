@@ -1,0 +1,310 @@
+﻿#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// =================== Structures =================== //
+
+typedef struct MenuItem {
+    int id;
+    char name[50];
+    float price;
+    struct MenuItem *next;
+} MenuItem;
+
+typedef struct Order {
+    int itemId;
+    int quantity;
+    struct Order *next;
+} Order;
+
+// =================== Global Variables =================== //
+
+MenuItem *menuHead = NULL;
+Order *orderHead = NULL;
+int nextMenuId = 1;
+
+// =================== Function Declarations =================== //
+
+void initDefaultMenu();
+void addMenuItem(const char *name, float price);
+void displayMenu();
+void removeMenuItem(int id);
+MenuItem* findMenuItem(int id);
+
+void placeOrder(int id, int qty);
+void displayOrder();
+void displayBill();
+void clearOrders();
+
+void adminPanel();
+void userPanel();
+int login(const char *role);
+void pressEnter();
+
+// =================== Main =================== //
+
+int main() {
+    int choice;
+    initDefaultMenu();
+
+    while (1) {
+        printf("\n========= Cafeteria System =========\n");
+        printf("1. Admin Login\n");
+        printf("2. User Login\n");
+        printf("3. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1:
+                if (login("admin")) adminPanel();
+                else printf("Invalid credentials!\n");
+                break;
+            case 2:
+                if (login("user")) userPanel();
+                else printf("Invalid credentials!\n");
+                break;
+            case 3:
+                printf("Exiting. Thank you!\n");
+                exit(0);
+            default:
+                printf("Invalid option.\n");
+        }
+    }
+
+    return 0;
+}
+
+// =================== Initialization =================== //
+
+void initDefaultMenu() {
+    addMenuItem("Coffee", 2.5);
+    addMenuItem("Tea", 1.5);
+    addMenuItem("Sandwich", 4.0);
+    addMenuItem("Burger", 6.0);
+    addMenuItem("Pizza", 8.0);
+}
+
+// =================== Menu Functions =================== //
+
+void addMenuItem(const char *name, float price) {
+    MenuItem *newItem = (MenuItem*) malloc(sizeof(MenuItem));
+    newItem->id = nextMenuId++;
+    strcpy(newItem->name, name);
+    newItem->price = price;
+    newItem->next = menuHead;
+    menuHead = newItem;
+}
+
+void displayMenu() {
+    MenuItem *current = menuHead;
+    printf("\n------ Menu ------\n");
+    printf("%-5s %-20s %-10s\n", "ID", "Item", "Price");
+    while (current) {
+        printf("%-5d %-20s $%-10.2f\n", current->id, current->name, current->price);
+        current = current->next;
+    }
+}
+
+void removeMenuItem(int id) {
+    MenuItem *temp = menuHead, *prev = NULL;
+    while (temp && temp->id != id) {
+        prev = temp;
+        temp = temp->next;
+    }
+
+    if (!temp) {
+        printf("Item ID %d not found.\n", id);
+        return;
+    }
+
+    if (!prev) menuHead = temp->next;
+    else prev->next = temp->next;
+
+    free(temp);
+    printf("Item removed.\n");
+}
+
+MenuItem* findMenuItem(int id) {
+    MenuItem *temp = menuHead;
+    while (temp) {
+        if (temp->id == id) return temp;
+        temp = temp->next;
+    }
+    return NULL;
+}
+
+// =================== Order Functions =================== //
+
+void placeOrder(int id, int qty) {
+    MenuItem *item = findMenuItem(id);
+    if (!item) {
+        printf("Item ID not found.\n");
+        return;
+    }
+
+    Order *newOrder = (Order*) malloc(sizeof(Order));
+    newOrder->itemId = id;
+    newOrder->quantity = qty;
+    newOrder->next = orderHead;
+    orderHead = newOrder;
+
+    printf("%d x %s added to your order.\n", qty, item->name);
+}
+
+void displayOrder() {
+    Order *temp = orderHead;
+    printf("\n------ Your Order ------\n");
+    printf("%-20s %-10s %-10s\n", "Item", "Qty", "Total");
+    while (temp) {
+        MenuItem *item = findMenuItem(temp->itemId);
+        if (item) {
+            float total = item->price * temp->quantity;
+            printf("%-20s %-10d $%-10.2f\n", item->name, temp->quantity, total);
+        }
+        temp = temp->next;
+    }
+}
+
+void displayBill() {
+    Order *temp = orderHead;
+    float grandTotal = 0;
+    printf("\n======== Final Bill ========\n");
+    printf("%-20s %-10s %-10s\n", "Item", "Qty", "Total");
+
+    while (temp) {
+        MenuItem *item = findMenuItem(temp->itemId);
+        if (item) {
+            float total = item->price * temp->quantity;
+            printf("%-20s %-10d $%-10.2f\n", item->name, temp->quantity, total);
+            grandTotal += total;
+        }
+        temp = temp->next;
+    }
+
+    printf("-------------------------------\n");
+    printf("Total Amount: $%.2f\n", grandTotal);
+    clearOrders();
+}
+
+// =================== Utility Functions =================== //
+
+void clearOrders() {
+    Order *temp;
+    while (orderHead) {
+        temp = orderHead;
+        orderHead = orderHead->next;
+        free(temp);
+    }
+}
+
+void pressEnter() {
+    printf("\nPress Enter to continue...");
+    getchar(); getchar();
+}
+
+// =================== Login =================== //
+
+int login(const char *role) {
+    char username[20], password[20];
+    printf("\nEnter username: ");
+    scanf("%s", username);
+    printf("Enter password: ");
+    scanf("%s", password);
+
+    if (strcmp(role, "admin") == 0)
+        return strcmp(username, "admin") == 0 && strcmp(password, "admin123") == 0;
+
+    if (strcmp(role, "user") == 0)
+        return strcmp(username, "user") == 0 && strcmp(password, "user123") == 0;
+
+    return 0;
+}
+
+// =================== Admin Panel =================== //
+
+void adminPanel() {
+    int choice, id;
+    char name[50];
+    float price;
+
+    while (1) {
+        printf("\n===== Admin Menu =====\n");
+        printf("1. View Menu\n");
+        printf("2. Add Item\n");
+        printf("3. Remove Item\n");
+        printf("4. Logout\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1:
+                displayMenu();
+                pressEnter();
+                break;
+            case 2:
+                printf("Enter item name: ");
+                scanf(" %[^\n]", name);
+                printf("Enter price: ");
+                scanf("%f", &price);
+                addMenuItem(name, price);
+                printf("Item added.\n");
+                break;
+            case 3:
+                displayMenu();
+                printf("Enter item ID to remove: ");
+                scanf("%d", &id);
+                removeMenuItem(id);
+                break;
+            case 4:
+                return;
+            default:
+                printf("Invalid option.\n");
+        }
+    }
+}
+
+// =================== User Panel =================== //
+
+void userPanel() {
+    int choice, id, qty;
+
+    while (1) {
+        printf("\n===== User Menu =====\n");
+        printf("1. View Menu\n");
+        printf("2. Place Order\n");
+        printf("3. View Current Order\n");
+        printf("4. Final Bill & Checkout\n");
+        printf("5. Logout\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1:
+                displayMenu();
+                pressEnter();
+                break;
+            case 2:
+                displayMenu();
+                printf("Enter item ID: ");
+                scanf("%d", &id);
+                printf("Enter quantity: ");
+                scanf("%d", &qty);
+                placeOrder(id, qty);
+                break;
+            case 3:
+                displayOrder();
+                pressEnter();
+                break;
+            case 4:
+                displayBill();
+                pressEnter();
+                return;
+            case 5:
+                clearOrders();
+                return;
+            default:
+                printf("Invalid option.\n");
+        }
+    }
+}
